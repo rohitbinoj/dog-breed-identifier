@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prediction Result</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Prediction Result</h1>
+
+      {% if error %}
+      <div class="error-message">{{ error }}</div>
+      {% else %}
+      <div class="result-container">
+        <div class="image-container">
+          <img
+            src="{{ image_file }}"
+            alt="Uploaded dog image"
+            class="result-image"
+          />
+        </div>
+
+        <div class="predictions-container">
+          {% for prediction in predictions %}
+          <div class="prediction-card">
+            <h2>{{ prediction.breed }}</h2>
+            <p class="confidence">Confidence: {{ prediction.confidence }}</p>
+
+            <div class="breed-info">
+              <h3>Breed Information</h3>
+              <div class="breed-info-grid">
+                <div class="info-section">
+                  <p>
+                    <strong>Temperament:</strong> {{ prediction.info.temperament
+                    }}
+                  </p>
+                  <p><strong>Height:</strong> {{ prediction.info.height }}</p>
+                  <p><strong>Weight:</strong> {{ prediction.info.weight }}</p>
+                  <p>
+                    <strong>Life Expectancy:</strong> {{
+                    prediction.info.life_expectancy }}
+                  </p>
+                </div>
+                <div class="info-section">
+                  <p>
+                    <strong>Bred For:</strong> {{
+                    prediction.info.characteristics.bred_for }}
+                  </p>
+                  <p>
+                    <strong>Breed Group:</strong> {{
+                    prediction.info.characteristics.breed_group }}
+                  </p>
+                  <p>
+                    <strong>Origin:</strong> {{
+                    prediction.info.characteristics.origin }}
+                  </p>
+                  {% if prediction.info.image_url %}
+                  <img
+                    src="{{ prediction.info.image_url }}"
+                    alt="{{ prediction.breed }} reference"
+                    class="breed-reference-image"
+                  />
+                  {% endif %}
+                </div>
+              </div>
+              <p class="description">{{ prediction.info.description }}</p>
+
+              {% if prediction.info.similar_breeds %}
+              <div class="similar-breeds">
+                <h3>Similar Breeds</h3>
+                <div class="similar-breeds-list">
+                  {% for similar_breed in prediction.info.similar_breeds %}
+                  <div class="similar-breed-card">
+                    <h4>{{ similar_breed }}</h4>
+                    {% if similar_breed in breed_info %}
+                    <p class="similar-breed-info">
+                      <span class="size-tag"
+                        >{{ breed_info[similar_breed].size }}</span
+                      >
+                      <span class="category-tag"
+                        >{{ breed_info[similar_breed].category }}</span
+                      >
+                    </p>
+                    <p class="similar-breed-description">
+                      {{ breed_info[similar_breed].temperament }}
+                    </p>
+                    {% endif %}
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <a href="{{ url_for('home') }}" class="back-btn">Try Another Image</a>
+    </div>
+  </body>
+</html>

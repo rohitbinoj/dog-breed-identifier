@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dog Breed Identifier</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Dog Breed Identifier</h1>
+      <div class="compare-button-container">
+        <a href="{{ url_for('compare') }}" class="compare-btn">
+          <span>🔄</span>
+          Compare Two Dogs
+        </a>
+      </div>
+
+      <div class="upload-methods">
+        <div class="upload-section">
+          <h2>Upload Image</h2>
+          <form
+            action="{{ url_for('predict') }}"
+            method="post"
+            enctype="multipart/form-data"
+            id="upload-form"
+          >
+            <div class="upload-container">
+              <div id="drop-zone" class="drop-zone">
+                <div class="drop-zone-text">
+                  <span>Drag and drop your image here</span>
+                  <span>OR</span>
+                  <label for="file" class="upload-label">
+                    Choose an image
+                    <input
+                      type="file"
+                      id="file"
+                      name="file"
+                      accept=".jpg,.jpeg,.png"
+                      required
+                    />
+                  </label>
+                </div>
+                <div id="file-name" class="file-name"></div>
+              </div>
+              <div
+                class="settings-toggle"
+                onclick="toggleSettings('file-settings')"
+              >
+                <span class="toggle-icon">⚙️</span>
+                <span>Image Settings</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div id="file-settings" class="preprocessing-options hidden">
+                <div class="slider-group">
+                  <label for="brightness">
+                    <span class="setting-icon">☀️</span>
+                    Brightness
+                    <span class="slider-value" id="brightness-value">1.0</span>
+                  </label>
+                  <input
+                    type="range"
+                    id="brightness"
+                    name="brightness"
+                    min="0.5"
+                    max="1.5"
+                    step="0.1"
+                    value="1.0"
+                    class="styled-slider"
+                  />
+                </div>
+                <div class="slider-group">
+                  <label for="contrast">
+                    <span class="setting-icon">🎯</span>
+                    Contrast
+                    <span class="slider-value" id="contrast-value">1.0</span>
+                  </label>
+                  <input
+                    type="range"
+                    id="contrast"
+                    name="contrast"
+                    min="0.5"
+                    max="1.5"
+                    step="0.1"
+                    value="1.0"
+                    class="styled-slider"
+                  />
+                </div>
+              </div>
+            </div>
+            <button type="submit" class="submit-btn">Identify Breed</button>
+          </form>
+        </div>
+
+        <div class="divider">OR</div>
+
+        <div class="url-section">
+          <h2>Use Image URL</h2>
+          <form action="{{ url_for('predict') }}" method="post">
+            <div class="url-container">
+              <input
+                type="url"
+                name="image_url"
+                placeholder="Paste image URL here"
+                required
+                class="url-input"
+              />
+              <div
+                class="settings-toggle"
+                onclick="toggleSettings('url-settings')"
+              >
+                <span class="toggle-icon">⚙️</span>
+                <span>Image Settings</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div id="url-settings" class="preprocessing-options hidden">
+                <div class="slider-group">
+                  <label for="url-brightness">
+                    <span class="setting-icon">☀️</span>
+                    Brightness
+                    <span class="slider-value" id="url-brightness-value"
+                      >1.0</span
+                    >
+                  </label>
+                  <input
+                    type="range"
+                    id="url-brightness"
+                    name="brightness"
+                    min="0.5"
+                    max="1.5"
+                    step="0.1"
+                    value="1.0"
+                    class="styled-slider"
+                  />
+                </div>
+                <div class="slider-group">
+                  <label for="url-contrast">
+                    <span class="setting-icon">🎯</span>
+                    Contrast
+                    <span class="slider-value" id="url-contrast-value"
+                      >1.0</span
+                    >
+                  </label>
+                  <input
+                    type="range"
+                    id="url-contrast"
+                    name="contrast"
+                    min="0.5"
+                    max="1.5"
+                    step="0.1"
+                    value="1.0"
+                    class="styled-slider"
+                  />
+                </div>
+              </div>
+            </div>
+            <button type="submit" class="submit-btn">Identify Breed</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const dropZone = document.getElementById("drop-zone");
+      const fileInput = document.getElementById("file");
+      const fileNameDisplay = document.getElementById("file-name");
+
+      // Handle file selection
+      fileInput.addEventListener("change", function () {
+        const fileName = this.files[0]?.name || "No file chosen";
+        fileNameDisplay.textContent = fileName;
+        dropZone.classList.add("has-file");
+      });
+
+      // Prevent default drag behaviors
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+      });
+
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      // Highlight drop zone when dragging over it
+      ["dragenter", "dragover"].forEach((eventName) => {
+        dropZone.addEventListener(eventName, highlight, false);
+      });
+
+      ["dragleave", "drop"].forEach((eventName) => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+      });
+
+      function highlight(e) {
+        dropZone.classList.add("drag-over");
+      }
+
+      function unhighlight(e) {
+        dropZone.classList.remove("drag-over");
+      }
+
+      // Handle dropped files
+      dropZone.addEventListener("drop", handleDrop, false);
+
+      function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files.length > 0) {
+          fileInput.files = files;
+          fileNameDisplay.textContent = files[0].name;
+          dropZone.classList.add("has-file");
+        }
+      }
+
+      // Settings toggle functionality
+      function toggleSettings(settingsId) {
+        const settings = document.getElementById(settingsId);
+        const toggle = settings.previousElementSibling;
+        const chevron = toggle.querySelector(".chevron");
+
+        settings.classList.toggle("hidden");
+        if (settings.classList.contains("hidden")) {
+          chevron.textContent = "▼";
+        } else {
+          chevron.textContent = "▲";
+        }
+      }
+
+      // Handle sliders
+      function updateSliderValue(sliderId, valueId) {
+        const slider = document.getElementById(sliderId);
+        const valueDisplay = document.getElementById(valueId);
+        valueDisplay.textContent = slider.value;
+      }
+
+      ["brightness", "contrast", "url-brightness", "url-contrast"].forEach(
+        (id) => {
+          const slider = document.getElementById(id);
+          slider.addEventListener("input", () => {
+            updateSliderValue(id, `${id}-value`);
+          });
+        }
+      );
+    </script>
+  </body>
+</html>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Compare Dog Breeds</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Compare Dog Breeds</h1>
+
+      {% if image_file1 and image_file2 %}
+      <div class="comparison-results">
+        <div class="comparison-grid">
+          <div class="comparison-item">
+            <img
+              src="{{ image_file1 }}"
+              alt="First dog"
+              class="comparison-image"
+            />
+            {% if error1 %}
+            <div class="error">{{ error1 }}</div>
+            {% else %}
+            <div class="predictions">
+              {% for prediction in predictions1 %}
+              <div class="prediction-card">
+                <h3>{{ prediction.breed }}</h3>
+                <p class="confidence">
+                  Confidence: {{ prediction.confidence }}
+                </p>
+                <div class="breed-info">
+                  <p>
+                    <strong>Temperament:</strong> {{ prediction.info.temperament
+                    }}
+                  </p>
+                  <p><strong>Height:</strong> {{ prediction.info.height }}</p>
+                  <p><strong>Weight:</strong> {{ prediction.info.weight }}</p>
+                  <p>
+                    <strong>Life Expectancy:</strong> {{
+                    prediction.info.life_expectancy }}
+                  </p>
+                  <p>{{ prediction.info.description }}</p>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="comparison-item">
+            <img
+              src="{{ image_file2 }}"
+              alt="Second dog"
+              class="comparison-image"
+            />
+            {% if error2 %}
+            <div class="error">{{ error2 }}</div>
+            {% else %}
+            <div class="predictions">
+              {% for prediction in predictions2 %}
+              <div class="prediction-card">
+                <h3>{{ prediction.breed }}</h3>
+                <p class="confidence">
+                  Confidence: {{ prediction.confidence }}
+                </p>
+                <div class="breed-info">
+                  <p>
+                    <strong>Temperament:</strong> {{ prediction.info.temperament
+                    }}
+                  </p>
+                  <p><strong>Height:</strong> {{ prediction.info.height }}</p>
+                  <p><strong>Weight:</strong> {{ prediction.info.weight }}</p>
+                  <p>
+                    <strong>Life Expectancy:</strong> {{
+                    prediction.info.life_expectancy }}
+                  </p>
+                  <p>{{ prediction.info.description }}</p>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <form
+        action="{{ url_for('compare') }}"
+        method="post"
+        enctype="multipart/form-data"
+        class="comparison-form"
+      >
+        <div class="comparison-upload">
+          <div class="upload-section">
+            <h2>First Dog</h2>
+            <div class="upload-container">
+              <div id="drop-zone1" class="drop-zone">
+                <div class="drop-zone-text">
+                  <span>Drag and drop your image here</span>
+                  <span>OR</span>
+                  <label for="file1" class="upload-label">
+                    Choose an image
+                    <input
+                      type="file"
+                      id="file1"
+                      name="file1"
+                      accept=".jpg,.jpeg,.png"
+                      required
+                    />
+                  </label>
+                </div>
+                <div id="file-name1" class="file-name"></div>
+              </div>
+              <div
+                class="settings-toggle"
+                onclick="toggleSettings('file1-settings')"
+              >
+                <span class="toggle-icon">⚙️</span>
+                <span>Image Settings</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div id="file1-settings" class="preprocessing-options hidden">
+                <div class="slider-group">
+                  <label for="brightness1">
+                    <span class="setting-icon">☀️</span>
+                    Brightness
+                    <span class="slider-value" id="brightness1-value">1.0</span>
+                  </label>
+                  <input
+                    type="range"
+                    id="brightness1"
+                    name="brightness"
+                    min="0.5"
+                    max="1.5"
+                    step="0.1"
+                    value="1.0"
+                    class="styled-slider"
+                  />
+                </div>
+                <div class="slider-group">
+                  <label for="contrast1">
+                    <span class="setting-icon">🎯</span>
+                    Contrast
+                    <span class="slider-value" id="contrast1-value">1.0</span>
+                  </label>
+                  <input
+                    type="range"
+                    id="contrast1"
+                    name="contrast"
+                    min="0.5"
+                    max="1.5"
+                    step="0.1"
+                    value="1.0"
+                    class="styled-slider"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="upload-section">
+            <h2>Second Dog</h2>
+            <div class="upload-container">
+              <div id="drop-zone2" class="drop-zone">
+                <div class="drop-zone-text">
+                  <span>Drag and drop your image here</span>
+                  <span>OR</span>
+                  <label for="file2" class="upload-label">
+                    Choose an image
+                    <input
+                      type="file"
+                      id="file2"
+                      name="file2"
+                      accept=".jpg,.jpeg,.png"
+                      required
+                    />
+                  </label>
+                </div>
+                <div id="file-name2" class="file-name"></div>
+              </div>
+              <div
+                class="settings-toggle"
+                onclick="toggleSettings('file2-settings')"
+              >
+                <span class="toggle-icon">⚙️</span>
+                <span>Image Settings</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div id="file2-settings" class="preprocessing-options hidden">
+                <div class="slider-group">
+                  <label for="brightness2">
+                    <span class="setting-icon">☀️</span>
+                    Brightness
+                    <span class="slider-value" id="brightness2-value">1.0</span>
+                  </label>
+                  <input
+                    type="range"
+                    id="brightness2"
+                    name="brightness"
+                    min="0.5"
+                    max="1.5"
+                    step="0.1"
+                    value="1.0"
+                    class="styled-slider"
+                  />
+                </div>
+                <div class="slider-group">
+                  <label for="contrast2">
+                    <span class="setting-icon">🎯</span>
+                    Contrast
+                    <span class="slider-value" id="contrast2-value">1.0</span>
+                  </label>
+                  <input
+                    type="range"
+                    id="contrast2"
+                    name="contrast"
+                    min="0.5"
+                    max="1.5"
+                    step="0.1"
+                    value="1.0"
+                    class="styled-slider"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn compare-submit">
+          Compare Dogs
+        </button>
+      </form>
+      {% endif %}
+
+      <div class="navigation">
+        <a href="{{ url_for('home') }}" class="back-btn">Back to Home</a>
+      </div>
+    </div>
+
+    <script>
+      function setupDropZone(number) {
+        const dropZone = document.getElementById(`drop-zone${number}`);
+        const fileInput = document.getElementById(`file${number}`);
+        const fileNameDisplay = document.getElementById(`file-name${number}`);
+
+        fileInput.addEventListener("change", function () {
+          const fileName = this.files[0]?.name || "No file chosen";
+          fileNameDisplay.textContent = fileName;
+          dropZone.classList.add("has-file");
+        });
+
+        ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+          dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ["dragenter", "dragover"].forEach((eventName) => {
+          dropZone.addEventListener(
+            eventName,
+            () => highlight(dropZone),
+            false
+          );
+        });
+
+        ["dragleave", "drop"].forEach((eventName) => {
+          dropZone.addEventListener(
+            eventName,
+            () => unhighlight(dropZone),
+            false
+          );
+        });
+
+        dropZone.addEventListener(
+          "drop",
+          (e) => handleDrop(e, fileInput, fileNameDisplay, dropZone),
+          false
+        );
+      }
+
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      function highlight(dropZone) {
+        dropZone.classList.add("drag-over");
+      }
+
+      function unhighlight(dropZone) {
+        dropZone.classList.remove("drag-over");
+      }
+
+      function handleDrop(e, fileInput, fileNameDisplay, dropZone) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files.length > 0) {
+          fileInput.files = files;
+          fileNameDisplay.textContent = files[0].name;
+          dropZone.classList.add("has-file");
+        }
+      }
+
+      // Initialize both drop zones
+      setupDropZone(1);
+      setupDropZone(2);
+
+      // Handle sliders
+      function updateSliderValue(sliderId, valueId) {
+        const slider = document.getElementById(sliderId);
+        const valueDisplay = document.getElementById(valueId);
+        valueDisplay.textContent = slider.value;
+      }
+
+      ["brightness1", "contrast1", "brightness2", "contrast2"].forEach((id) => {
+        const slider = document.getElementById(id);
+        slider.addEventListener("input", () => {
+          updateSliderValue(id, `${id}-value`);
+        });
+      });
+
+      function toggleSettings(settingsId) {
+        const settings = document.getElementById(settingsId);
+        const toggle = settings.previousElementSibling;
+        const chevron = toggle.querySelector(".chevron");
+
+        settings.classList.toggle("hidden");
+        if (settings.classList.contains("hidden")) {
+          chevron.textContent = "▼";
+        } else {
+          chevron.textContent = "▲";
+        }
+      }
+    </script>
+  </body>
+</html>

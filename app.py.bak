@@ -1,0 +1,525 @@
+import os
+from flask import Flask, request, render_template, url_for, jsonify
+from werkzeug.utils import secure_filename
+import torch
+import torchvision.transforms as transforms
+from torchvision.models import resnet50, ResNet50_Weights
+from PIL import Image, ImageEnhance, ExifTags
+import numpy as np
+import requests
+from io import BytesIO
+import json
+import ssl
+import time
+
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+
+DOG_API_KEY = "live_ASl6vRzbAj5p0I7EpFBxGq0VKkxSHRyTjd5u6aLqgSxy0p3sqZ7XCe86X3vQ4hmv"
+
+# Ensure upload folder exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Set up SSL certificate verification for macOS
+ssl._create_default_https_context = ssl._create_unverified_context
+
+print("Loading ResNet50 model (this may take a few minutes)...")
+# Load pre-trained model
+model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+model.eval()
+print("Model loaded successfully!")
+
+# Define image transforms
+transform = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                        std=[0.229, 0.224, 0.225])
+])
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Load breed information from JSON file
+BREED_INFO = {
+    "German Shepherd": {
+        "temperament": "Confident, Courageous, Smart",
+        "height": "22-26 inches",
+        "weight": "50-90 pounds",
+        "life_expectancy": "7-10 years",
+        "description": "German Shepherds are intelligent and versatile working dogs. They are known for their loyalty, confidence, and ability to learn commands for many tasks.",
+        "category": "working",
+        "size": "large",
+        "similar_breeds": ["Belgian Malinois", "Dutch Shepherd", "Rottweiler"]
+    },
+    "Beagle": {
+        "temperament": "Friendly, Curious, Merry",
+        "height": "13-15 inches",
+        "weight": "20-30 pounds",
+        "life_expectancy": "10-15 years",
+        "description": "Beagles are happy-go-lucky and friendly, making them excellent family pets. They are curious and great with children.",
+        "category": "hound",
+        "size": "small",
+        "similar_breeds": ["Basset Hound", "Foxhound", "Harrier"]
+    },
+    "Belgian Malinois": {
+        "temperament": "Confident, Smart, Hardworking",
+        "height": "22-26 inches",
+        "weight": "40-80 pounds",
+        "life_expectancy": "10-14 years",
+        "description": "Belgian Malinois are highly trainable and energetic working dogs, often used in police and military work.",
+        "category": "working",
+        "size": "large",
+        "similar_breeds": ["German Shepherd", "Dutch Shepherd", "Belgian Tervuren"]
+    },
+    "Rottweiler": {
+        "temperament": "Loyal, Confident, Protective",
+        "height": "22-27 inches",
+        "weight": "80-135 pounds",
+        "life_expectancy": "8-10 years",
+        "description": "Rottweilers are powerful, protective dogs known for their loyalty and strength.",
+        "category": "working",
+        "size": "large",
+        "similar_breeds": ["German Shepherd", "Doberman Pinscher", "Bullmastiff"]
+    },
+    "Basset Hound": {
+        "temperament": "Patient, Low-key, Charming",
+        "height": "11-15 inches",
+        "weight": "40-65 pounds",
+        "life_expectancy": "10-12 years",
+        "description": "Basset Hounds are gentle, patient dogs with a keen sense of smell and tracking ability.",
+        "category": "hound",
+        "size": "medium",
+        "similar_breeds": ["Beagle", "Bloodhound", "Harrier"]
+    },
+    "Pug": {
+        "temperament": "Charming, Loving, Mischievous",
+        "height": "10-13 inches",
+        "weight": "14-18 pounds",
+        "life_expectancy": "12-15 years",
+        "description": "Pugs are known for their wrinkled face, curled tail, and charming personalities. They are excellent companion dogs who love to be close to their humans.",
+        "category": "companion",
+        "size": "small",
+        "similar_breeds": ["French Bulldog", "Boston Terrier", "Shih Tzu"]
+    },
+    "Labrador Retriever": {
+        "temperament": "Friendly, Active, Outgoing",
+        "height": "21.5-24.5 inches",
+        "weight": "55-80 pounds",
+        "life_expectancy": "10-12 years",
+        "description": "Labrador Retrievers are America's most popular dog breed. Known for their friendly nature, intelligence, and excellent swimming ability.",
+        "category": "sporting",
+        "size": "large",
+        "similar_breeds": ["Golden Retriever", "Chesapeake Bay Retriever", "Flat-Coated Retriever"]
+    },
+    "French Bulldog": {
+        "temperament": "Playful, Smart, Adaptable",
+        "height": "11-13 inches",
+        "weight": "16-28 pounds",
+        "life_expectancy": "10-12 years",
+        "description": "French Bulldogs are compact, muscular dogs with distinctive bat-like ears. They are known for their affectionate nature and adaptability to city living.",
+        "category": "companion",
+        "size": "small",
+        "similar_breeds": ["Boston Terrier", "Pug", "English Bulldog"]
+    },
+    "Golden Retriever": {
+        "temperament": "Friendly, Intelligent, Devoted",
+        "height": "21.5-24 inches",
+        "weight": "55-75 pounds",
+        "life_expectancy": "10-12 years",
+        "description": "Golden Retrievers are intelligent, friendly, and devoted family companions. They excel in obedience training and are often used as service dogs.",
+        "category": "sporting",
+        "size": "large",
+        "similar_breeds": ["Labrador Retriever", "Flat-Coated Retriever", "Nova Scotia Duck Tolling Retriever"]
+    },
+    "Siberian Husky": {
+        "temperament": "Loyal, Outgoing, Mischievous",
+        "height": "20-23.5 inches",
+        "weight": "35-60 pounds",
+        "life_expectancy": "12-14 years",
+        "description": "Siberian Huskies are beautiful Arctic sled dogs. They are known for their striking appearance, endurance, and friendly but independent nature.",
+        "category": "working",
+        "size": "medium",
+        "similar_breeds": ["Alaskan Malamute", "Samoyed", "Alaskan Husky"]
+    },
+    "Dachshund": {
+        "temperament": "Clever, Stubborn, Devoted",
+        "height": "8-9 inches",
+        "weight": "16-32 pounds",
+        "life_expectancy": "12-16 years",
+        "description": "Dachshunds are long-bodied, short-legged dogs originally bred to hunt badgers. They are brave, clever, and make excellent family companions.",
+        "category": "hound",
+        "size": "small",
+        "similar_breeds": ["Basset Hound", "Beagle", "Miniature Pinscher"]
+    },
+    "Chihuahua": {
+        "temperament": "Charming, Graceful, Sassy",
+        "height": "5-8 inches",
+        "weight": "2-6 pounds",
+        "life_expectancy": "14-16 years",
+        "description": "Chihuahuas are the smallest dog breed, but they have huge personalities. They are loyal, sassy, and make excellent companion dogs.",
+        "category": "companion",
+        "size": "toy",
+        "similar_breeds": ["Yorkshire Terrier", "Toy Fox Terrier", "Papillon"]
+    }
+}
+
+def fetch_breed_info_from_api(breed_name):
+    """
+    Fetch breed information from The Dog API with retries and enhanced error handling
+    """
+    headers = {
+        'x-api-key': DOG_API_KEY
+    }
+    
+    # Clean breed name for search
+    search_breed = breed_name.lower().replace(' ', '/')
+    
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            # First, search for the breed to get its ID
+            search_url = f"https://api.thedogapi.com/v1/breeds/search?q={search_breed}"
+            response = requests.get(search_url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            breeds = response.json()
+            if not breeds:
+                return None
+                
+            breed_info = breeds[0]  # Get the first matching breed
+            breed_id = breed_info['id']
+            
+            # Get additional breed info including images
+            detail_url = f"https://api.thedogapi.com/v1/breeds/{breed_id}"
+            detail_response = requests.get(detail_url, headers=headers, timeout=10)
+            detail_response.raise_for_status()
+            
+            if detail_response.status_code == 200:
+                breed_detail = detail_response.json()
+                breed_info.update(breed_detail)
+            
+            # Extract and format breed information
+            info = {
+                "temperament": breed_info.get("temperament", "Information not available"),
+                "height": f"{breed_info.get('height', {}).get('imperial', 'N/A')} inches",
+                "weight": f"{breed_info.get('weight', {}).get('imperial', 'N/A')} pounds",
+                "life_expectancy": breed_info.get("life_span", "Information not available"),
+                "description": breed_info.get("description", "Information not available"),
+                "category": breed_info.get("breed_group", "unknown").lower(),
+                "size": "medium",  # Default size
+                "characteristics": {
+                    "bred_for": breed_info.get("bred_for", "Unknown"),
+                    "breed_group": breed_info.get("breed_group", "Unknown"),
+                    "origin": breed_info.get("origin", "Unknown"),
+                },
+                "image_url": breed_info.get("reference_image_id", None),
+            }
+            
+            # Determine size based on weight
+            try:
+                weight = breed_info.get('weight', {}).get('imperial', '').split('-')
+                if weight and len(weight) > 0:
+                    avg_weight = sum(float(w.strip()) for w in weight if w.strip().replace('.','').isdigit()) / len(weight)
+                    if avg_weight < 20:
+                        info['size'] = 'small'
+                    elif avg_weight > 60:
+                        info['size'] = 'large'
+                    elif avg_weight < 10:
+                        info['size'] = 'toy'
+            except:
+                pass  # Keep default size if weight parsing fails
+                
+            # If we got a reference image ID, get the image URL
+            if info['image_url']:
+                try:
+                    image_url = f"https://api.thedogapi.com/v1/images/{info['image_url']}"
+                    img_response = requests.get(image_url, headers=headers, timeout=10)
+                    img_response.raise_for_status()
+                    if img_response.status_code == 200:
+                        img_data = img_response.json()
+                        info['image_url'] = img_data.get('url', None)
+                except:
+                    info['image_url'] = None
+            
+            return info
+            
+        except requests.exceptions.RequestException as e:
+            retry_count += 1
+            if retry_count == max_retries:
+                print(f"Error fetching breed info after {max_retries} attempts: {e}")
+                return None
+            print(f"Retry {retry_count} after error: {e}")
+            time.sleep(1)  # Wait 1 second before retrying
+    
+    return None
+
+def get_breed_info(breed_name):
+    # Clean breed name to match dictionary keys
+    clean_name = breed_name.split('(')[0].strip()
+    
+    # Check cache first
+    if clean_name in BREED_INFO:
+        return BREED_INFO[clean_name]
+    
+    # Try variations
+    variations = [
+        clean_name.replace('_', ' '),
+        clean_name.title(),
+        ' '.join(w.title() for w in clean_name.split()),
+        clean_name.replace('-', ' '),
+        clean_name.split(',')[0].strip(),
+    ]
+    
+    # Check each variation in cache
+    for variant in variations:
+        if variant in BREED_INFO:
+            return BREED_INFO[variant]
+            
+    # If not found in cache, try fetching from API
+    api_info = fetch_breed_info_from_api(clean_name)
+    if api_info:
+        # Generate similar breeds based on category and size if not present
+        if 'similar_breeds' not in api_info:
+            api_info['similar_breeds'] = []
+            # Find similar breeds from our local database
+            for breed, info in BREED_INFO.items():
+                if (info['category'] == api_info['category'] and 
+                    info['size'] == api_info['size'] and
+                    breed != clean_name and
+                    len(api_info['similar_breeds']) < 3):
+                    api_info['similar_breeds'].append(breed)
+        
+        # Cache the result for future use
+        BREED_INFO[clean_name] = api_info
+        return api_info
+    
+    # Return default info if no information is found
+    return {
+        "temperament": "Information not available",
+        "height": "Information not available",
+        "weight": "Information not available",
+        "life_expectancy": "Information not available",
+        "description": "Detailed information not available for this breed.",
+        "category": "unknown",
+        "size": "unknown",
+        "similar_breeds": [],
+        "characteristics": {
+            "bred_for": "Unknown",
+            "breed_group": "Unknown",
+            "origin": "Unknown",
+        },
+        "image_url": None
+    }
+}
+
+def load_image_from_url(url):
+    response = requests.get(url)
+    return Image.open(BytesIO(response.content))
+
+# Add preprocessing utility functions
+def auto_orient_image(image):
+    try:
+        for orientation in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation] == 'Orientation':
+                break
+        exif = dict(image._getexif().items())
+
+        if exif[orientation] == 2:
+            image = image.transpose(Image.FLIP_LEFT_RIGHT)
+        elif exif[orientation] == 3:
+            image = image.rotate(180)
+        elif exif[orientation] == 4:
+            image = image.rotate(180).transpose(Image.FLIP_LEFT_RIGHT)
+        elif exif[orientation] == 5:
+            image = image.rotate(-90).transpose(Image.FLIP_LEFT_RIGHT)
+        elif exif[orientation] == 6:
+            image = image.rotate(-90)
+        elif exif[orientation] == 7:
+            image = image.rotate(90).transpose(Image.FLIP_LEFT_RIGHT)
+        elif exif[orientation] == 8:
+            image = image.rotate(90)
+    except (AttributeError, KeyError, IndexError):
+        # No EXIF data or no orientation tag
+        pass
+    return image
+
+def preprocess_image(image, brightness=1.0, contrast=1.0, max_size=800):
+    try:
+        # Auto-orient based on EXIF
+        image = auto_orient_image(image)
+        
+        # Resize while maintaining aspect ratio
+        if max(image.size) > max_size:
+            ratio = max_size / max(image.size)
+            new_size = tuple(int(dim * ratio) for dim in image.size)
+            image = image.resize(new_size, Image.LANCZOS)
+        
+        # Apply enhancements
+        if brightness != 1.0:
+            enhancer = ImageEnhance.Brightness(image)
+            image = enhancer.enhance(brightness)
+        
+        if contrast != 1.0:
+            enhancer = ImageEnhance.Contrast(image)
+            image = enhancer.enhance(contrast)
+        
+        return image
+    except Exception as e:
+        print(f"Error in preprocessing: {str(e)}")
+        return image
+
+def predict_breed(file_path, is_url=False, brightness=1.0, contrast=1.0):
+    try:
+        # Load image from file or URL
+        if is_url:
+            img = load_image_from_url(file_path)
+        else:
+            img = Image.open(file_path)
+
+        # Convert to RGB if necessary
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        
+        # Apply preprocessing
+        img = preprocess_image(img, brightness=brightness, contrast=contrast)
+        
+        # Apply model transforms
+        img_tensor = transform(img).unsqueeze(0)
+        
+        # Make prediction
+        with torch.no_grad():
+            outputs = model(img_tensor)
+            probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
+            top5_prob, top5_catid = torch.topk(probabilities, 5)
+        
+        # Get all valid dog predictions
+        predictions = []
+        for prob, idx in zip(top5_prob, top5_catid):
+            idx = idx.item()
+            if 151 <= idx <= 268:  # Dog breed range
+                class_name = ResNet50_Weights.IMAGENET1K_V2.meta["categories"][idx]
+                breed_name = class_name.replace('_', ' ').title()
+                confidence = prob.item()
+                if confidence >= 0.1:  # 10% confidence threshold for secondary predictions
+                    predictions.append({
+                        'breed': breed_name,
+                        'confidence': f"{confidence:.1%}",
+                        'info': get_breed_info(breed_name)
+                    })
+        
+        if predictions:
+            return {
+                'success': True,
+                'predictions': predictions
+            }
+        else:
+            return {
+                'success': False,
+                'message': "No dog breeds recognized with sufficient confidence. Please try another image."
+            }
+    
+    except Exception as e:
+        return {
+            'success': False,
+            'message': f"Error processing image: {str(e)}"
+        }
+
+@app.route('/', methods=['GET'])
+def home():
+    return render_template('index.html')
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    # Get preprocessing parameters
+    brightness = float(request.form.get('brightness', 1.0))
+    contrast = float(request.form.get('contrast', 1.0))
+    
+    # Check for URL-based prediction
+    image_url = request.form.get('image_url')
+    if image_url:
+        result = predict_breed(image_url, is_url=True, brightness=brightness, contrast=contrast)
+        return render_template('result.html',
+                            predictions=result['predictions'] if result['success'] else None,
+                            error=None if result['success'] else result['message'],
+                            image_file=image_url)
+    
+    # Handle file upload
+    if 'file' not in request.files:
+        return 'No file uploaded', 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return 'No file selected', 400
+    
+    if file and allowed_file(file.filename):
+        # Save uploaded file
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+        
+        # Get prediction
+        result = predict_breed(file_path, brightness=brightness, contrast=contrast)
+        
+        return render_template('result.html',
+                            predictions=result['predictions'] if result['success'] else None,
+                            error=None if result['success'] else result['message'],
+                            image_file=url_for('static', filename=f'uploads/{filename}'),
+                            breed_info=BREED_INFO)
+    
+    return 'Invalid file type', 400
+
+@app.route('/compare', methods=['GET', 'POST'])
+def compare():
+    if request.method == 'POST':
+        # Get preprocessing parameters
+        brightness = float(request.form.get('brightness', 1.0))
+        contrast = float(request.form.get('contrast', 1.0))
+        
+        # Check if both files are provided
+        if 'file1' not in request.files or 'file2' not in request.files:
+            return 'Both images are required', 400
+        
+        file1 = request.files['file1']
+        file2 = request.files['file2']
+        
+        if file1.filename == '' or file2.filename == '':
+            return 'Both images are required', 400
+        
+        if not (allowed_file(file1.filename) and allowed_file(file2.filename)):
+            return 'Invalid file type', 400
+        
+        # Save and process first image
+        filename1 = secure_filename(file1.filename)
+        file_path1 = os.path.join(app.config['UPLOAD_FOLDER'], filename1)
+        file1.save(file_path1)
+        result1 = predict_breed(file_path1, brightness=brightness, contrast=contrast)
+        
+        # Save and process second image
+        filename2 = secure_filename(file2.filename)
+        file_path2 = os.path.join(app.config['UPLOAD_FOLDER'], filename2)
+        file2.save(file_path2)
+        result2 = predict_breed(file_path2, brightness=brightness, contrast=contrast)
+        
+        return render_template('compare.html',
+                           predictions1=result1['predictions'] if result1['success'] else None,
+                           predictions2=result2['predictions'] if result2['success'] else None,
+                           error1=None if result1['success'] else result1['message'],
+                           error2=None if result2['success'] else result2['message'],
+                           image_file1=url_for('static', filename=f'uploads/{filename1}'),
+                           image_file2=url_for('static', filename=f'uploads/{filename2}'))
+    
+    return render_template('compare.html')
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, default=5000)
+    args = parser.parse_args()
+    
+    app.run(debug=True, host='0.0.0.0', port=args.port)
