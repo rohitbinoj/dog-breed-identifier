@@ -2,7 +2,8 @@ Flask==2.0.1
 torch
 torchvision
 numpy
-Pillow
+Pillow>=10.0.0  
+pillow-avif-plugin  
 Werkzeug==2.0.1
 requests>=2.25.1
 python-dotenv==1.0.0

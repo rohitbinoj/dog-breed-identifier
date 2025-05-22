@@ -561,3 +561,242 @@ input[type="file"] {
   margin-bottom: 1rem;
   text-align: center;
 }
+
+/* Loading Spinner Styles */
+.loader-container {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+.loader {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 5px solid #3498db;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loader-container.show {
+  display: flex;
+}
+
+/* Dark mode styles */
+:root {
+  --background-color: #f5f5f5;
+  --text-color: #333;
+  --container-bg: white;
+  --section-bg: #f8f9fa;
+  --heading-color: #2c3e50;
+  --border-color: #e9ecef;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --primary-color: #3498db;
+  --primary-hover: #2980b9;
+  --success-color: #2ecc71;
+  --success-hover: #27ae60;
+}
+
+[data-theme="dark"] {
+  --background-color: #1a1a1a;
+  --text-color: #e0e0e0;
+  --container-bg: #2c2c2c;
+  --section-bg: #383838;
+  --heading-color: #e0e0e0;
+  --border-color: #404040;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --primary-color: #3498db;
+  --primary-hover: #2980b9;
+  --success-color: #2ecc71;
+  --success-hover: #27ae60;
+  --input-bg: #424242;
+  --card-bg: #333333;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.container {
+  background-color: var(--container-bg);
+  box-shadow: 0 2px 10px var(--shadow-color);
+}
+
+h1,
+h2 {
+  color: var(--heading-color);
+}
+
+.upload-section,
+.url-section {
+  background-color: var(--section-bg);
+  border: 1px solid var(--border-color);
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background-color: var(--container-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.theme-toggle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px var(--shadow-color);
+}
+
+.theme-toggle .icon {
+  font-size: 1.2rem;
+}
+
+/* Dark mode input styles */
+[data-theme="dark"] .url-input,
+[data-theme="dark"] .drop-zone {
+  background-color: var(--input-bg);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .settings-toggle,
+[data-theme="dark"] .preprocessing-options {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .upload-section,
+[data-theme="dark"] .url-section {
+  background-color: var(--section-bg);
+  border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .drop-zone-text span {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .file-name {
+  color: #999;
+}
+
+[data-theme="dark"] .prediction-card,
+[data-theme="dark"] .similar-breed-card,
+[data-theme="dark"] .breed-info {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .info-section {
+  background-color: var(--section-bg);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .description {
+  background-color: var(--card-bg);
+  border-color: var(--primary-color);
+}
+
+[data-theme="dark"] .size-tag {
+  background-color: var(--section-bg);
+  color: var(--text-color);
+}
+
+/* Dark mode text visibility fixes */
+[data-theme="dark"] .breed-info p,
+[data-theme="dark"] .info-section p,
+[data-theme="dark"] .similar-breed-description,
+[data-theme="dark"] .description,
+[data-theme="dark"] .confidence,
+[data-theme="dark"] .prediction-card h2,
+[data-theme="dark"] .prediction-card h3,
+[data-theme="dark"] .breed-info h3,
+[data-theme="dark"] .similar-breeds h3,
+[data-theme="dark"] .similar-breed-card h4 {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .info-section strong {
+  color: #3498db;
+}
+
+[data-theme="dark"] .confidence {
+  color: #2ecc71;
+}
+
+[data-theme="dark"] .similar-breed-info {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .category-tag {
+  background-color: #2980b9;
+  color: white;
+}
+
+[data-theme="dark"] .prediction-card,
+[data-theme="dark"] .breed-info {
+  border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .description {
+  border-left-color: #3498db;
+  color: #ccc;
+}
+
+/* Dark mode comparison page styles */
+[data-theme="dark"] .comparison-item {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .comparison-item h3 {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .comparison-item p {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .comparison-item strong {
+  color: #3498db;
+}
+
+[data-theme="dark"] .comparison-item .confidence {
+  color: #2ecc71;
+}
+
+[data-theme="dark"] .comparison-item .error {
+  background-color: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
+}
+
+[data-theme="dark"] .comparison-grid {
+  background-color: var(--background-color);
+}

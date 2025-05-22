@@ -13,17 +13,15 @@ import json
 import ssl
 import time
 
-# Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'avif'}  
 
 DOG_API_KEY = os.getenv('DOG_API_KEY')
 
-# Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 print("Loading ResNet50 model (this may take a few minutes)...")
@@ -245,7 +243,7 @@ BREED_INFO = {
 
 def fetch_breed_info_from_api(breed_name):
     """
-    Fetch breed information from The Dog API with retries and enhanced error handling
+    Fetch breed information from The Dog API
     """
     headers = {
         'x-api-key': DOG_API_KEY
@@ -413,7 +411,12 @@ def get_breed_info(breed_name):
 
 def load_image_from_url(url):
     response = requests.get(url)
-    return Image.open(BytesIO(response.content))
+    image = Image.open(BytesIO(response.content))
+    
+    # Convert WebP and AVIF to RGB if needed
+    if image.format in ['WEBP', 'AVIF'] or image.mode != 'RGB':
+        image = image.convert('RGB')
+    return image
 
 # Add preprocessing utility functions
 def auto_orient_image(image):
@@ -444,6 +447,10 @@ def auto_orient_image(image):
 
 def preprocess_image(image, brightness=1.0, contrast=1.0, max_size=800):
     try:
+        # Handle WebP and AVIF formats by converting to RGB
+        if image.format in ['WEBP', 'AVIF'] or image.mode != 'RGB':
+            image = image.convert('RGB')
+            
         # Auto-orient based on EXIF
         image = auto_orient_image(image)
         
@@ -475,7 +482,7 @@ def predict_breed(file_path, is_url=False, brightness=1.0, contrast=1.0):
         else:
             img = Image.open(file_path)
 
-        # Convert to RGB if necessary
+        # Convert to RGB if needed
         if img.mode != 'RGB':
             img = img.convert('RGB')
         

@@ -20,8 +20,11 @@ A Flask-based web application that identifies dog breeds from images using a pre
   - Local database with 13 common breeds
   - The Dog API integration for extended information
   - ResNet50 ImageNet model for classification
+- User Interface:
+  - Dark mode support with persistent theme preference
+  - Mobile-responsive modern UI design
+  - Intuitive theme toggle control
 - Confidence-based predictions (threshold: 10%)
-- Mobile-responsive modern UI
 
 ## Requirements
 
@@ -113,6 +116,16 @@ http://localhost:5000
    - Detailed breed information
    - Similarities and differences
 
+### Theme Preferences
+
+1. Use the theme toggle button in the navigation bar to switch between:
+   - Light mode (default)
+   - Dark mode
+2. Your theme preference is automatically:
+   - Saved to localStorage
+   - Applied across all pages
+   - Restored on subsequent visits
+
 ## Project Structure
 
 ```
@@ -191,5 +204,3 @@ The application includes detailed information for many popular breeds including:
 - Siberian Husky
 - Dachshund
 - Chihuahua
-
-

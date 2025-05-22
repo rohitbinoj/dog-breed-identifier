@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,6 +10,13 @@
     />
   </head>
   <body>
+    <button class="theme-toggle" id="theme-toggle">
+      <span class="icon">🌞</span>
+      <span class="text">Light Mode</span>
+    </button>
+    <div class="loader-container">
+      <div class="loader"></div>
+    </div>
     <div class="container">
       <h1>Dog Breed Identifier</h1>
       <div class="compare-button-container">
@@ -39,7 +46,7 @@
                       type="file"
                       id="file"
                       name="file"
-                      accept=".jpg,.jpeg,.png"
+                      accept=".jpg,.jpeg,.png,.webp,.avif"
                       required
                     />
                   </label>
@@ -164,6 +171,55 @@
     </div>
 
     <script>
+      // Theme toggle functionality
+      const themeToggle = document.getElementById("theme-toggle");
+      const html = document.documentElement;
+      const toggleIcon = themeToggle.querySelector(".icon");
+      const toggleText = themeToggle.querySelector(".text");
+
+      // Check for saved theme preference, otherwise use system preference
+      const getPreferredTheme = () => {
+        const savedTheme = localStorage.getItem("theme");
+        if (savedTheme) {
+          return savedTheme;
+        }
+        return window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+      };
+
+      const setTheme = (theme) => {
+        html.setAttribute("data-theme", theme);
+        localStorage.setItem("theme", theme);
+
+        // Update button
+        if (theme === "dark") {
+          toggleIcon.textContent = "🌙";
+          toggleText.textContent = "Dark Mode";
+        } else {
+          toggleIcon.textContent = "🌞";
+          toggleText.textContent = "Light Mode";
+        }
+      };
+
+      // Set initial theme
+      setTheme(getPreferredTheme());
+
+      // Handle button click
+      themeToggle.addEventListener("click", () => {
+        const currentTheme = html.getAttribute("data-theme");
+        setTheme(currentTheme === "dark" ? "light" : "dark");
+      });
+
+      // Handle system theme changes
+      window
+        .matchMedia("(prefers-color-scheme: dark)")
+        .addEventListener("change", (e) => {
+          if (!localStorage.getItem("theme")) {
+            setTheme(e.matches ? "dark" : "light");
+          }
+        });
+
       const dropZone = document.getElementById("drop-zone");
       const fileInput = document.getElementById("file");
       const fileNameDisplay = document.getElementById("file-name");
@@ -246,6 +302,18 @@
           });
         }
       );
+
+      // Form submission handlers
+      const forms = document.querySelectorAll("form");
+      const loaderContainer = document.querySelector(".loader-container");
+
+      function showLoader() {
+        loaderContainer.classList.add("show");
+      }
+
+      forms.forEach((form) => {
+        form.addEventListener("submit", showLoader);
+      });
     </script>
   </body>
 </html>
